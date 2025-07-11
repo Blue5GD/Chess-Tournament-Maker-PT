@@ -11,7 +11,7 @@ This is the new and improved official software for managing our school's chess t
 
 For ppl who just want to run the program.
 
-1.  **Go to the [Releases Page](https://github.com/Blue5GD/Chess-Tournament-Maker-PT/releases/tag/latest)**.
+1.  **Go to the [Releases Page](https://github.com/Blue5GD/Chess-Tournament-Maker-PT/releases/latest)**.
 2.  Under the "Assets" section of the latest release, click on the `.zip` file to download it.
 3.  **Unzip/extract the folder** after downloading.
 4.  Open the unzipped folder and double-click the `Chess-Tournament-Maker-PT.exe` file to run the program!
