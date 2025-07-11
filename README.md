@@ -34,10 +34,10 @@ First, get a copy of the source code on your machine.
 
 ```bash
 # Clone this repository to your computer
-git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
+git clone https://github.com/Blue5GD/Chess-Tournament-Maker-PT.git
 
 # Navigate into the project directory
-cd YOUR_REPOSITORY_FOLDER_NAME
+cd Chess-Tournament-Maker-PT
 ```
 
 ### 3. Install Dependencies
