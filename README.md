@@ -2,7 +2,7 @@
 
 This is the new and improved official software for managing our school's chess tournaments as of the 2025-2026 school year. It has all the correct matchmaking logic, and is designed to be used on a personal computer (PC) at home to make the pairings while you record the results on a restricted school Chromebook at school.
 
-![Screenshot of the main application window](link-to-your-screenshot.png)
+![Screenshot of the main application window](/screenshots/program.png)
 
 ---
 
