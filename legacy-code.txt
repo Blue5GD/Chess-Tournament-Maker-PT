@@ -1,0 +1,304 @@
+"""
+HOW TO USE:
+#1 enter the number of players that will be participating in the tournament
+#2 mark any absences before generating the pairings for each round
+#3 generate pairings and enter game results
+
+TO SAVE TOURNAMENT RESULTS:
+Press the "Export Data" button and copy it from the console
+Save it as a JSON file
+Then if you want to go back where you left off..... 
+press the "Import Data" button and select the JSON file that you saved
+
+Note: the undo button is kinda broken. I'll fix it in the future
+"""
+
+import tkinter as tk
+from tkinter import ttk, messagebox, simpledialog, filedialog
+import random
+import json
+import sys
+
+class ChessTournament:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Chess Swiss Tournament System")
+        self.master.geometry("600x800")
+
+        self.all_players = []
+        self.active_players = []
+        self.rounds = []
+        self.current_round = 0
+        self.last_action = None
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        main_frame = ttk.Frame(self.master, padding="10")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        ttk.Label(main_frame, text="Number of players in club:").grid(row=0, column=0, sticky=tk.W)
+        self.num_players_entry = ttk.Entry(main_frame, width=5)
+        self.num_players_entry.grid(row=0, column=1, sticky=tk.W)
+        ttk.Button(main_frame, text="Enter Players", command=self.enter_players).grid(row=0, column=2, sticky=tk.W)
+
+        self.player_list = tk.Listbox(main_frame, height=10, width=50)
+        self.player_list.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E))
+
+        ttk.Button(main_frame, text="Mark Absences", command=self.mark_absences).grid(row=2, column=0, sticky=tk.W)
+        ttk.Button(main_frame, text="Generate Pairings", command=self.generate_pairings).grid(row=2, column=1, sticky=tk.W)
+        ttk.Button(main_frame, text="Enter Results", command=self.enter_results).grid(row=2, column=2, sticky=tk.W)
+        ttk.Button(main_frame, text="Export Data", command=self.export_data).grid(row=3, column=0, sticky=tk.W)
+        ttk.Button(main_frame, text="Import Data", command=self.import_data).grid(row=3, column=1, sticky=tk.W)
+        ttk.Button(main_frame, text="Undo Last Action", command=self.undo_last_action).grid(row=3, column=2, sticky=tk.W)
+
+        self.pairings_text = tk.Text(main_frame, height=20, width=70)
+        self.pairings_text.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E))
+
+    def enter_players(self):
+        try:
+            num_players = int(self.num_players_entry.get())
+            self.all_players = []
+            for i in range(num_players):
+                name = simpledialog.askstring("Player Name", f"Enter name for player {i+1}:")
+                if name:
+                    self.all_players.append({
+                        "name": name,
+                        "points": 0,
+                        "color_history": [],
+                        "opponents": [],
+                        "byes": 0,
+                        "absent_byes": 0,
+                        "last_bye_round": 0,
+                        "absent": False
+                    })
+            self.active_players = self.all_players.copy()
+            self.update_player_list()
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid number of players.")
+
+    def update_player_list(self):
+        self.player_list.delete(0, tk.END)
+        for player in sorted(self.all_players, key=lambda x: (-x['points'], x['name'])):
+            status = "Active" if not player['absent'] else "Absent"
+            self.player_list.insert(tk.END, f"{player['name']} - {player['points']} points - {status}")
+
+    def mark_absences(self):
+        for player in self.all_players:
+            if messagebox.askyesno("Absence", f"Is {player['name']} absent?"):
+                player['absent'] = True
+                if player in self.active_players:
+                    self.active_players.remove(player)
+                if player['absent_byes'] < 3:
+                    player['points'] += 0.5
+                    player['absent_byes'] += 1
+                player['byes'] += 1
+                player['last_bye_round'] = self.current_round + 1
+            else:
+                player['absent'] = False
+                if player not in self.active_players:
+                    self.active_players.append(player)
+
+        self.update_player_list()
+
+    def generate_pairings(self):
+        if not self.active_players:
+            messagebox.showerror("Error", "No active players.")
+            return
+
+        self.current_round += 1
+        pairings = []
+        available_players = sorted(self.active_players, key=lambda x: (-x['points'], x['name']))
+
+        while len(available_players) > 1:
+            player1 = available_players.pop(0)
+            for player2 in available_players:
+                if player2['name'] not in player1['opponents']:
+                    available_players.remove(player2)
+                    color = self.determine_color(player1, player2)
+                    pairings.append((player1, player2, color))
+                    break
+            else:
+                available_players.append(player1)
+
+        if available_players:
+            bye_player = min(available_players, key=lambda p: (self.current_round - p['last_bye_round'], -p['points']))
+            pairings.append((bye_player, None, 'white'))
+            bye_player['points'] += 1
+            bye_player['byes'] += 1
+            bye_player['last_bye_round'] = self.current_round
+            messagebox.showinfo("Bye Assigned", f"{bye_player['name']} has been given a bye.")
+
+        self.rounds.append(pairings)
+        self.display_pairings(pairings)
+        self.last_action = "generate_pairings"
+
+    def determine_color(self, player1, player2):
+        if len(player1['color_history']) < 2 or player1['color_history'][-1] != player1['color_history'][-2]:
+            return random.choice(['white', 'black'])
+        else:
+            return 'black' if player1['color_history'][-1] == 'white' else 'white'
+
+    def display_pairings(self, pairings):
+        self.pairings_text.delete('1.0', tk.END)
+        pairings_str = f"Round {self.current_round} Pairings:\n"
+        for i, (player1, player2, color) in enumerate(pairings, 1):
+            color_history1 = ''.join(['W' if c == 'white' else 'B' for c in player1['color_history'][-3:]])
+            if player2:
+                color_history2 = ''.join(['W' if c == 'white' else 'B' for c in player2['color_history'][-3:]])
+                pairing_str = f"Board {i}: {player1['name']} ({color_history1}, {color}) vs {player2['name']} ({color_history2}, {self.opposite_color(color)})\n"
+            else:
+                bye_status = 'bye' if player1 in self.active_players else 'ab'
+                pairing_str = f"{bye_status}: {player1['name']} ({color_history1})\n"
+            self.pairings_text.insert(tk.END, pairing_str)
+            pairings_str += pairing_str
+        self.update_player_list()
+        print(pairings_str)  # Print pairings to console
+
+    def opposite_color(self, color):
+        return 'black' if color == 'white' else 'white'
+
+    def enter_results(self):
+        if not self.rounds:
+            messagebox.showerror("Error", "No pairings generated yet.")
+            return
+
+        current_pairings = self.rounds[-1]
+        for i, (player1, player2, color) in enumerate(current_pairings):
+            if player2:
+                result = messagebox.askquestion(f"Board {i+1}: {player1['name']} vs {player2['name']}", 
+                    f"Who won?\nChoose 'Yes' for White\nChoose 'Cancel' for Black\nChoose 'No' for Draw\nClose window to exit",
+                    type='yesnocancel')
+                if result == 'yes':
+                    self.update_results(player1, player2, color, True)
+                elif result == 'no':
+                    self.update_results(player1, player2, color, None)
+                elif result == 'cancel':
+                    self.update_results(player1, player2, color, False)
+                else:
+                    break  # Exit if the window was closed
+            else:
+                messagebox.showinfo("Bye", f"{player1['name']} had a bye.")
+
+        self.update_player_list()
+        self.display_pairings(current_pairings)
+        self.last_action = "enter_results"
+
+    def update_results(self, player1, player2, color, white_win):
+        if white_win is None:  # Draw
+            player1["points"] += 0.5
+            player2["points"] += 0.5
+            result1 = result2 = "D"
+        elif white_win == (color == "white"):  # player1 wins
+            player1["points"] += 1
+            result1, result2 = "W", "L"
+        else:  # player2 wins
+            player2["points"] += 1
+            result1, result2 = "L", "W"
+
+        player1["opponents"].append(player2["name"])
+        player2["opponents"].append(player1["name"])
+        player1["results"] = player1.get("results", []) + [result1]
+        player2["results"] = player2.get("results", []) + [result2]
+        player1["color_history"].append("W" if color == "white" else "B")
+        player2["color_history"].append("B" if color == "white" else "W")
+
+    def export_data(self):
+        data = {
+            "all_players": [
+                {
+                    "name": player["name"],
+                    "points": player["points"],
+                    "color_history": player["color_history"],
+                    "opponents": player["opponents"],
+                    "results": player.get("results", []),
+                    "byes": player["byes"],
+                    "absent_byes": player["absent_byes"],
+                    "last_bye_round": player["last_bye_round"],
+                    "absent": player["absent"]
+                }
+                for player in self.all_players
+            ],
+            "active_players": [player['name'] for player in self.active_players],
+            "current_round": self.current_round
+        }
+
+        json_data = json.dumps(data, indent=2)
+        print("Exported Data:")
+        print(json_data)
+        messagebox.showinfo("Export Successful", "Tournament data has been exported to the console.")
+        
+    def import_data(self):
+        file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
+        if file_path:
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                self.all_players = data["all_players"]
+                self.active_players = [player for player in self.all_players if player['name'] in data["active_players"]]
+                self.current_round = data["current_round"]
+
+                # Ensure all players have a 'results' list
+                for player in self.all_players:
+                    if "results" not in player:
+                        player["results"] = []
+
+                self.update_player_list()
+                self.display_current_state()
+                messagebox.showinfo("Import Successful", f"Data imported successfully from {file_path}")
+            except json.JSONDecodeError:
+                messagebox.showerror("Import Error", "Invalid JSON file. Please check the format.")
+            except KeyError:
+                messagebox.showerror("Import Error", "Invalid data structure in the JSON file.")
+
+    def display_current_state(self):
+        self.pairings_text.delete('1.0', tk.END)
+        self.pairings_text.insert(tk.END, f"Current Round: {self.current_round}\n\n")
+        self.pairings_text.insert(tk.END, "Player Standings:\n")
+        for player in sorted(self.all_players, key=lambda x: (-x['points'], x['name'])):
+            self.pairings_text.insert(tk.END, f"{player['name']}: {player['points']} points\n")
+        self.pairings_text.insert(tk.END, "\nPrevious Rounds:\n")
+        for round_num, pairings in enumerate(self.rounds, 1):
+            self.pairings_text.insert(tk.END, f"\nRound {round_num}:\n")
+            for pairing in pairings:
+                if pairing[1]:
+                    self.pairings_text.insert(tk.END, f"{pairing[0]['name']} vs {pairing[1]['name']} ({pairing[2]})\n")
+                else:
+                    self.pairings_text.insert(tk.END, f"{pairing[0]['name']} (bye)\n")
+
+    def undo_last_action(self):
+        if self.last_action is None:
+            messagebox.showinfo("Undo", "No action to undo.")
+            return
+
+        if self.last_action == "generate_pairings":
+            if self.rounds:
+                self.rounds.pop()
+                self.current_round -= 1
+                messagebox.showinfo("Undo", "Last pairings undone.")
+                self.pairings_text.delete('1.0', tk.END)
+        elif self.last_action == "enter_results":
+            if self.rounds:
+                last_round = self.rounds[-1]
+                for player1, player2, _ in last_round:
+                    if player2:
+                        player1['points'] = max(0, player1['points'] - 1)  # Ensure points don't go negative
+                        player2['points'] = max(0, player2['points'] - 1)
+                        player1['opponents'].pop()
+                        player2['opponents'].pop()
+                        player1['color_history'].pop()
+                        player2['color_history'].pop()
+                    else:
+                        player1['points'] = max(0, player1['points'] - 1)
+                        player1['byes'] -= 1
+                messagebox.showinfo("Undo", "Last round results undone.")
+
+        self.last_action = None
+        self.update_player_list()
+        if self.rounds:
+            self.display_pairings(self.rounds[-1])
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ChessTournament(root)
+    root.mainloop()
