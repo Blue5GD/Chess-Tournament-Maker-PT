@@ -2,8 +2,6 @@
 
 This is the new and improved official software for managing our school's chess tournaments as of the 2025-2026 school year. It has all the correct matchmaking logic, and is designed to be used on a personal computer (PC) at home to make the pairings while you record the results on a restricted school Chromebook at school.
 
-**Note: This app currently only works on windows, but I will fix this soon and make a seperate version for macOS.**
-
 ![Screenshot of the main application window](/screenshots/program.png)
 
 ---
@@ -11,6 +9,8 @@ This is the new and improved official software for managing our school's chess t
 ## How to use (easiest guide)
 
 For ppl who just want to run the program.
+
+**Note: This will not work if you're using MacOS or any operating system other than Windows.** Alternatively, you can follow the instructions for future developers.
 
 1.  **Go to the [Releases Page](https://github.com/Blue5GD/Chess-Tournament-Maker-PT/releases/latest)**.
 2.  Under the "Assets" section of the latest release, click on the `.zip` file to download it.
