@@ -50,10 +50,12 @@ It is highly recommended to use a virtual environment to keep dependencies separ
 python -m venv venv
 
 # Activate the virtual environment
-# On Windows:
+# On Windows (command prompt):
 venv\Scripts\activate
+# On Windows (powershell)
+.\venv\Scripts\Activate.ps1
 # On macOS/Linux:
-# source venv/bin/activate
+source venv/bin/activate
 
 # Install the required libraries from the requirements.txt file
 pip install -r requirements.txt
